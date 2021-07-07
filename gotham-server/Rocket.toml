@@ -3,3 +3,4 @@ address = "localhost"
 port = 8000
 keep_alive = 5
 log = "normal"
+is_extra = true
