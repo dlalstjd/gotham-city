@@ -1,8 +1,9 @@
-use curv::BigInt;
+use curv::{BigInt, arithmetic::Converter};
 use kms::ecdsa::two_party::party2;
 use kms::ecdsa::two_party::MasterKey2;
 use multi_party_ecdsa::protocols::two_party_ecdsa::lindell_2017::party_one;
 use multi_party_ecdsa::protocols::two_party_ecdsa::lindell_2017::party_two;
+use hex;
 
 use super::super::utilities::requests;
 use super::super::utilities::error_to_c_string;
@@ -23,12 +24,17 @@ pub struct SignSecondMsgRequest {
 
 pub fn sign(
     client_shim: &ClientShim,
-    message: BigInt,
+    message: String,
     mk: &MasterKey2,
     x_pos: BigInt,
     y_pos: BigInt,
     id: &String,
 ) -> Result<party_one::SignatureRecid> {
+    let message = match hex::decode(transaction.clone()) {
+        Ok(x) => x,
+        Err(_e) => transaction.as_bytes().to_vec(),
+    };
+    let message = &message[..];
     let (eph_key_gen_first_message_party_two, eph_comm_witness, eph_ec_key_pair_party2) =
         MasterKey2::sign_first_message();
 
@@ -39,16 +45,17 @@ pub fn sign(
             None => return Err(failure::err_msg("party1 sign first message request failed"))
         };
 
+    let message_bn = BigInt::from_bytes(message);
     let party_two_sign_message = mk.sign_second_message(
         &eph_ec_key_pair_party2,
         eph_comm_witness.clone(),
         &sign_party_one_first_message,
-        &message,
+        &message_bn,
     );
 
     let signature = match get_signature(
         client_shim,
-        message,
+        message_bn,
         party_two_sign_message,
         x_pos,
         y_pos,
